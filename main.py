@@ -33,5 +33,5 @@ def run_test():
 
 if __name__=="__main__":
     # run_test()
-    #Does it give opening time of candlestick or close?
+    #Last candlestick is the current one being formed. Not conclcuded. But we can add if current candlestick is X percentage away from stop loss, close 
     test()
