@@ -5,7 +5,9 @@ import decimal
 import time
 import hmac 
 import time
+import hashlib
 import configparser
+from datetime import datetime
 
 # At the current time Binance rate limits are: 1200 requests per minute. 10 orders per second. 100,000 orders per 24hrs.
 config = configparser.ConfigParser()
@@ -21,12 +23,23 @@ class Binance:
         self.base = 'https://api.binance.com'
         self.endpoints = {
             'order': '/api/v1/order',
+            'account': '/api/v3/account',
             'testOrder': '/api/v1/order/test',
-            'allOrders': '/api/v1/allOrders',
+            'allOrders': '/api/v3/allOrders',
             'klines': '/api/v1/klines',
             'exchangeInfo': '/api/v1/exchangeInfo',
             'ticker': '/api/v1/ticker/price'
         }
+    
+    def cleanData(self, df, indexColName='Date', droppedCols=['Unnamed: 0']):
+        df = df.dropna()
+        df[indexColName] = [datetime.utcfromtimestamp(i/1000).strftime('%Y-%m-%d %H:%M:%S') for i in df[indexColName] ]
+        df.set_index(indexColName, inplace=True)
+        df.index = pd.to_datetime(df.index)
+        if 'Unnamed: 0' in df.columns:
+            df = df.drop(columns=droppedCols)
+        df.columns = map(str.capitalize, df.columns)
+        return df
 
     def GetTradingSymbols(self):
         """ Get all the symbols which are tradeable (currently) """
@@ -94,6 +107,12 @@ class Binance:
         dictionary = json.loads(data.text)
 
         print(dictionary)
+    
+    def last_close_above_stoploss(self, symbol:str, interval:str, stopLoss):
+        binance = Binance()
+        latestCandleSticks = binance.GetSymbolData(symbol,interval)
+        latestCandleSticks = self.cleanData(latestCandleSticks, 'time', droppedCols=[])
+        return True if stopLoss > latestCandleSticks.Close[-2] else False
 
 
     def PlaceOrder(self, symbol:str, side:str, type:str, quantity: float, price:float, test:bool=True):
@@ -185,7 +204,7 @@ class Binance:
 
         return json.loads(response.text )
 
-    def GetAllOrderInfo(self, symbol:str, orderId:str):
+    def GetAllOrderInfo(self, symbol:str):
         '''
             Get info about all orders on a symbol
         '''
@@ -206,8 +225,31 @@ class Binance:
             print(e)
             response = {'code':'-1','msg':e}
             return None
+        print(response)
+        return json.loads(response.text)
 
-        return json.loads(response.text )
+    def GetAccountInfo(self):
+        '''
+            Get info about all orders on a symbol
+        '''
+        
+        params = {
+            'timestamp': int(round(time.time()*1000))
+        }
+
+        self.signRequest(params)
+
+        url = self.base + self.endpoints['account']
+        
+        try:
+            response = requests.get(url, params = params , headers={'X-MBX-APIKEY':binance_keys['api_key']})
+        except Exception as e:
+            print('Exception occurred when trying to get all orders on a symbol '+url) 
+            print(e)
+            response = {'code':'-1','msg':e}
+            return None
+        print(response)
+        return json.loads(response.text)
 
     def floatToString(self,f: float):
         ''' Converts the given float to a string, without reverting to the scientific notation '''

@@ -5,22 +5,8 @@ import numpy as np
 import schedule
 import time
 
-def cleanData(df, indexColName='Date', droppedCols=['Unnamed: 0']):
-  df = df.dropna()
-  df.set_index(indexColName, inplace=True)
-  df.index = pd.to_datetime(df.index)
-  if 'Unnamed: 0' in df.columns:
-    df = df.drop(columns=droppedCols)
-  df.columns = map(str.capitalize, df.columns)
-  return df
 
-def test():
-    print('Starting..')
-    binance = Binance()
-    latestCandleSticks = binance.GetSymbolData('BTCUSDT','1h')
-    latestCandleSticks.time = [datetime.utcfromtimestamp(i/1000).strftime('%Y-%m-%d %H:%M:%S') for i in latestCandleSticks.time ]
-    latestCandleSticks = cleanData(latestCandleSticks, 'time', droppedCols=[])
-    print(latestCandleSticks)
+
 
 def run_test():
     schedule.every(1).minutes.do(test)
@@ -32,6 +18,18 @@ def run_test():
 
 
 if __name__=="__main__":
+    
     # run_test()
-    #Last candlestick is the current one being formed. Not conclcuded. But we can add if current candlestick is X percentage away from stop loss, close 
-    test()
+    #TODO: Add if current candlestick is X percentage away from stop loss, close 
+    binance = Binance()
+    x = binance.GetAllOrderInfo('BTCUSDT')
+    df = pd.DataFrame(x)
+    df = binance.cleanData(df, 'time',[])
+    for row in range(0, len(df)):
+        print(df.iloc[row])
+    df2 = pd.DataFrame(binance.GetAccountInfo()['balances'])
+    df2['free'] = pd.to_numeric(df2['free'])
+    #TODO: We can use this to determine what positions we're in. Then we can enact stoploss if holding is above threshold
+    df2 = df2[df2['free']>0]
+    print(df2)
+    
