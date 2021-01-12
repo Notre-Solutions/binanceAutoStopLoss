@@ -48,7 +48,7 @@ def addStopLoss(base, quote, stopLossLevel):
     newStopLoss['limit'] = np.NaN
     df = pd.read_csv('stop_loss.csv')
     # Get the last index of base 
-    # Check if it's been executed or stopped. If so continue if not, stop it and add a new one. (Delete the filtering)
+    # TODO: Check if it's been executed or stopped. If so continue if not, stop it and add a new one. (Delete the filtering)
     df2 = df[(df['executed']==False)&(df['time_stopped']==np.NaN)&(df['base']==base)]
     if len(df) == 1:
         newStopLoss['time_started'] = df2.iloc[0]['time_started']
