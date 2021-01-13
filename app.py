@@ -54,25 +54,37 @@ def addStopLoss():
     filename = 'stops/%s_%s.csv'%(base,quote)
     if os.path.isfile(filename):
         df = pd.read_csv(filename)
-        if df.iloc[-1,:]['executed']:
-            df.append(newStopLoss,ignore_index=True)
+        print(df.iloc[-1,:]['executed'])
+        stopLoc = df.columns.get_loc('stop')
+        executedLoc = df.columns.get_loc('executed')
+        if df.iloc[-1,executedLoc]:
+            df = df.append(newStopLoss,ignore_index=True)
         else:
-            df.iloc[-1,:]['stop'] = newStopLoss['stop']
+            df.iloc[-1,stopLoc] = newStopLoss['stop']
         df.to_csv(filename,index=False)
     else:
-        df = pd.DataFrame.from_dict(newStopLoss,orient='index')
-        df.to_csv(filename)
+        df = pd.DataFrame(newStopLoss,index=[0])
+        df.to_csv(filename,index=False)
+
     return 'Hello, World!'
 
 
 
-@app.route('/stoploss', methods=['POST'])
+@app.route('/hasHitStoploss', methods=['POST'])
 def hasHitStoploss():
-    symbol = request.args['symbol']
-    interval = request.args['interval']
-    stoploss = int(request.args['stoploss'])
-    status = run_stop_loss(symbol, interval, stoploss)
-    return jsonify({'isStopLossBreached':status})
+    base = request.args['base']
+    quote = request.args['quote']
+    filename = 'stops/%s_%s.csv'%(base,quote)
+    if os.path.isfile(filename):
+        df = pd.read_csv(filename)
+        print(df.iloc[-1,:]['executed'])
+        stopLoc = df.columns.get_loc('stop')
+        executedLoc = df.columns.get_loc('executed')
+        return jsonify({'stopLossLevel': df.iloc[-1,stopLoc],'isStopLossBreached': df.iloc[-1,executedLoc]})
+    else:
+        return jsonify({'stopLossLevel': 0,'isStopLossBreached': False})
+        
+
 
 def run_stop_loss(symbol='BTCUSDT',interval='1h',stoploss=35000):
     global binance

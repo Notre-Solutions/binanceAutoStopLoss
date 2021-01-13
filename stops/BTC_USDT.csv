@@ -1,8 +1,3 @@
-,0
-base,BTC
-quote,USDT
-time_started,1610520395
-time_stopped,
-executed,False
-stop,35000
-limit,
+base,quote,time_started,time_stopped,executed,stop,limit
+BTC,USDT,1610521553,,True,123123,
+BTC,USDT,1610521644,,False,64242,
