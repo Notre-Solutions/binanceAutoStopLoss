@@ -5,7 +5,7 @@ from binance import Binance
 import numpy as np
 import pandas as pd
 import time
-
+import os.path
 
 
 app = Flask(__name__)
@@ -35,9 +35,14 @@ global stoploss
 def hello_world():
     return 'Hello, World!'
 
-@app.route('/', methods=['POST'])
-def addStopLoss(base, quote, stopLossLevel):
+@app.route('/addStopLoss', methods=['POST'])
+def addStopLoss():
+    base = request.args['base']
+    quote = request.args['quote']
+    stopLossLevel = request.args['stopLossLevel']
+
     columns=['base','quote','time_started','time_stopped','executed','stop','limit']
+
     newStopLoss = {}
     newStopLoss['base'] = base
     newStopLoss['quote'] = quote
@@ -46,16 +51,17 @@ def addStopLoss(base, quote, stopLossLevel):
     newStopLoss['executed'] = False
     newStopLoss['stop'] = stopLossLevel
     newStopLoss['limit'] = np.NaN
-    df = pd.read_csv('stop_loss.csv')
-    # Get the last index of base 
-    # TODO: Check if it's been executed or stopped. If so continue if not, stop it and add a new one. (Delete the filtering)
-    df2 = df[(df['executed']==False)&(df['time_stopped']==np.NaN)&(df['base']==base)]
-    if len(df) == 1:
-        newStopLoss['time_started'] = df2.iloc[0]['time_started']
-        df.iloc[0] = newStopLoss
+    filename = 'stops/%s_%s.csv'%(base,quote)
+    if os.path.isfile(filename):
+        df = pd.read_csv(filename)
+        if df.iloc[-1,:]['executed']:
+            df.append(newStopLoss,ignore_index=True)
+        else:
+            df.iloc[-1,:]['stop'] = newStopLoss['stop']
+        df.to_csv(filename,index=False)
     else:
-        df.append(newStopLoss,ignore_index=True)
-    df.to_csv('stop_loss.csv',index=False)
+        df = pd.DataFrame.from_dict(newStopLoss,orient='index')
+        df.to_csv(filename)
     return 'Hello, World!'
 
 
