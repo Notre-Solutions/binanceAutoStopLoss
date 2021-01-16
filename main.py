@@ -8,6 +8,29 @@ from app import addStopLoss
 import os.path
 
 
+class BinanceStopLoss:
+    def __init__(self, binanceClient, interval):
+        self.client = binanceClient
+        self.interval = interval
+
+    def getLatestCandlestick(self, client, base, quote, interval):
+        pass
+
+    def getCurrencyBalances(self, client):
+        pass
+
+    def latestPrice(self, client):
+        pass
+
+    def executeMarketOrder(self, client):
+        pass
+
+    def getActiveStoplosses(self):
+        pass
+
+
+
+
 
 def run_test():
     schedule.every(1).minutes.do(test)
@@ -19,12 +42,10 @@ def run_test():
 
 
 if __name__=="__main__":
-    base = 'BTC'
-    quote = 'USDT'
-    stopLossLevel = 64242
-
-    columns=['base','quote','time_started','time_stopped','executed','stop','limit']
-
+    from binance.client import Client
+    client = Client(api_key, api_secret)
+    binance = Binance()
+    print(binance.getTickData('BTCUSDT'))
     
     
     # addStopLoss('BTC','USDT','35000')
