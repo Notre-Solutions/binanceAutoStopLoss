@@ -1,92 +1,108 @@
 import threading
 import time
 from flask import Flask, jsonify, request
-from binance import Binance
+from main import BinanceStopLoss
 import numpy as np
 import pandas as pd
 import time
 import os.path
+import configparser
+from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
+from binance.client import Client
+config = configparser.ConfigParser()
+config.read('./env.ini')
 
+binance_keys = {
+    'api_key': config.get('BINANCE','api_key'),
+    'secret_key': config.get('BINANCE','secret_key')
+}
+import logging
+from utils import Utils
+utils = Utils()
 
 app = Flask(__name__)
-global binance
-global stopLossActive
-global columns 
-columns=['base','quote','time_started','time_stopped','executed','stop','limit']
-stopLossActive = False
-binance = Binance()
 
+client = Client(binance_keys['api_key'], binance_keys['secret_key'])
+bsl = BinanceStopLoss(client,'1h','stops/stops.json')
 # export FLASK_APP=app.py
 # flask run
-@app.before_first_request
-def activate_job():
-    global stopLossActive
-    def run_job():
-        while True:
-            if stopLossActive:
-                print("Run recurring task")
-                time.sleep(3)
+# @app.before_first_request
+# def activate_job():
+        
+#     thread = threading.Thread(target=run_job)
+#     thread.start()
 
-    thread = threading.Thread(target=run_job)
-    thread.start()
 
-global stoploss
+
 @app.route('/')
 def hello_world():
-    return 'Hello, World!'
+    sl = bsl.getStoplosses()
+    return str(sl)
 
-@app.route('/addStopLoss', methods=['POST'])
-def addStopLoss():
-    base = request.args['base']
+@app.route('/createStopLoss', methods=['POST'])
+def createStopLoss():
+    asset = request.args['asset']
     quote = request.args['quote']
-    stopLossLevel = request.args['stopLossLevel']
+    price = request.args['price']
+    return bsl.createStopLoss(asset, quote, price)
 
-    columns=['base','quote','time_started','time_stopped','executed','stop','limit']
+@app.route('/removeStopLoss', methods=['DELETE'])
+def removeStopLoss():
+    asset = request.args['asset']
+    return bsl.removeStopLoss(asset)
 
-    newStopLoss = {}
-    newStopLoss['base'] = base
-    newStopLoss['quote'] = quote
-    newStopLoss['time_started'] = int(time.time())
-    newStopLoss['time_stopped'] = np.NaN
-    newStopLoss['executed'] = False
-    newStopLoss['stop'] = stopLossLevel
-    newStopLoss['limit'] = np.NaN
-    filename = 'stops/%s_%s.csv'%(base,quote)
-    if os.path.isfile(filename):
-        df = pd.read_csv(filename)
-        print(df.iloc[-1,:]['executed'])
-        stopLoc = df.columns.get_loc('stop')
-        executedLoc = df.columns.get_loc('executed')
-        if df.iloc[-1,executedLoc]:
-            df = df.append(newStopLoss,ignore_index=True)
-        else:
-            df.iloc[-1,stopLoc] = newStopLoss['stop']
-        df.to_csv(filename,index=False)
-    else:
-        df = pd.DataFrame(newStopLoss,index=[0])
-        df.to_csv(filename,index=False)
+@app.route('/getStopLoss', methods=['GET'])
+def getStopLoss():
+    asset = request.args['asset']
+    return bsl.getStopLoss(asset)
 
-    return 'Hello, World!'
+@app.route('/getAllStopLoss', methods=['GET'])
+def getAllStopLoss():
+    asset = request.args['asset']
+    return bsl.getStopLosses()
 
+def runStopLoss():
+    stopLosses = bsl.getStopLosses()
+    if len(stopLosses.keys()) > 0:
+        for key in stopLosses.keys():
+            if stopLosses[key]['active']:
+                symbol = stopLosses[key]['asset']+stopLosses[key]['quote']
+                candle = bsl.getLatestCandlestick(symbol)
+                logging.info('Processing: {}'.format(str(stopLosses[key])))
+                prices = bsl.getLatestPrices(symbol)
+                askPrice = utils.round_decimals_down(float(prices['ask']))
+                if float(candle['close']) < float(stopLosses[key]['price']) and \
+                askPrice < float(stopLosses[key]['price']) :
+                    quoteQuantity = bsl.getAssetBalance(stopLosses[key]['asset'], stopLosses[key]['quote'])['free'+stopLosses[key]['quote']]
+                    quoteQuantity = utils.round_decimals_down(float(quoteQuantity))
+                    minNotional = float(bsl.getMinNotional(symbol))
+                    if quoteQuantity > minNotional:
+                        logging.info("Executing sell order: Quantity - {}  Price - {}  Symbol - {}".format(quoteQuantity, askPrice, symbol ))
+                        # res = bsl.executeMarketOrder(symbol, quoteQuantity)
+                        logging.info("Order executed for {}".format(symbol))
+                        # logging.info(str(res))
+                        bsl.turnOffStopLoss(key)
+                    else:
+                        logging.warn("Quote quantity is less that minimum notional. Please turn off stop loss")
+                        logging.info("Min Notional {} Quote Quantity {}".format(minNotional,quoteQuantity))
+                else:
+                    logging.info("Stop loss not yet reached for {}".format(symbol))
+            else:
+                logging.info("Stop loss not active for {}".format(key))
 
-
-@app.route('/hasHitStoploss', methods=['POST'])
-def hasHitStoploss():
-    base = request.args['base']
-    quote = request.args['quote']
-    filename = 'stops/%s_%s.csv'%(base,quote)
-    if os.path.isfile(filename):
-        df = pd.read_csv(filename)
-        print(df.iloc[-1,:]['executed'])
-        stopLoc = df.columns.get_loc('stop')
-        executedLoc = df.columns.get_loc('executed')
-        return jsonify({'stopLossLevel': df.iloc[-1,stopLoc],'isStopLossBreached': df.iloc[-1,executedLoc]})
-    else:
-        return jsonify({'stopLossLevel': 0,'isStopLossBreached': False})
+    return {'Run':True} 
         
 
-
-def run_stop_loss(symbol='BTCUSDT',interval='1h',stoploss=35000):
-    global binance
-    return binance.last_close_above_stoploss(symbol, interval, stoploss)
-  
+try:
+    sched = BackgroundScheduler(daemon=True)
+    sched.add_job(
+        runStopLoss, 
+        trigger='cron',
+        minute='40'
+    )
+    sched.start()
+    atexit.register(lambda: sched.shutdown(wait=False))
+except Exception as ex:
+    logging.ERROR("StopLoss has stopped working")
+    logging.ERROR(ex)
