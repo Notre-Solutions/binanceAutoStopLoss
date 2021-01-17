@@ -25,14 +25,9 @@ app = Flask(__name__)
 
 client = Client(binance_keys['api_key'], binance_keys['secret_key'])
 bsl = BinanceStopLoss(client,'1h','stops/stops.json')
+
 # export FLASK_APP=app.py
 # flask run
-# @app.before_first_request
-# def activate_job():
-        
-#     thread = threading.Thread(target=run_job)
-#     thread.start()
-
 
 
 @app.route('/')
