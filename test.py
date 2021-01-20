@@ -18,8 +18,8 @@ class BinanceStopLossTest(unittest.TestCase):
   def setUp(self):
     utils = Utils()
     client = Client(binance_keys['api_key'], binance_keys['secret_key'])
-    self.stopLoss = BinanceStopLoss(client,'1h','stops/stopsTest.json')
-    self.interval = '1h'
+    self.stopLoss = BinanceStopLoss(client,'4h','stops/stopsTest.json')
+    self.interval = '4h'
     self.asset = 'BTC'
     self.quote = 'USDT'
     self.price = 35000

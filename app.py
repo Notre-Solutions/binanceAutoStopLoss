@@ -24,7 +24,7 @@ utils = Utils()
 app = Flask(__name__)
 
 client = Client(binance_keys['api_key'], binance_keys['secret_key'])
-bsl = BinanceStopLoss(client,'1h','stops/stops.json')
+bsl = BinanceStopLoss(client,'4h','stops/stops.json')
 
 # export FLASK_APP=app.py
 # flask run
@@ -94,7 +94,7 @@ try:
     sched.add_job(
         runStopLoss, 
         trigger='cron',
-        minute='40'
+        minute='05'
     )
     sched.start()
     atexit.register(lambda: sched.shutdown(wait=False))
