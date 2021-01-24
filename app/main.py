@@ -10,13 +10,11 @@ import time
 from binance.enums import *
 # from app import addStopLoss
 import os.path
-import configparser
-config = configparser.ConfigParser()
-config.read('./env.ini')
+import os
 
 binance_keys = {
-    'api_key': config.get('BINANCE','api_key'),
-    'secret_key': config.get('BINANCE','secret_key')
+    'api_key': os.environ['API_KEY'],
+    'secret_key': os.environ['SECRET_KEY']
 }
 
 class BinanceStopLoss:

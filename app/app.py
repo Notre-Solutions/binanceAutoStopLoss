@@ -5,27 +5,27 @@ from main import BinanceStopLoss
 import numpy as np
 import pandas as pd
 import time
+import os
 import os.path
-import configparser
+from flask_pymongo import PyMongo
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 from binance.client import Client
-config = configparser.ConfigParser()
-config.read('./env.ini')
 
 binance_keys = {
-    'api_key': config.get('BINANCE','api_key'),
-    'secret_key': config.get('BINANCE','secret_key')
+    'api_key': os.environ['API_KEY'],
+    'secret_key': os.environ['SECRET_KEY']
 }
 import logging
 from utils import Utils
 utils = Utils()
 
 app = Flask(__name__)
+app.config["MONGO_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
 
 client = Client(binance_keys['api_key'], binance_keys['secret_key'])
-bsl = BinanceStopLoss(client,'4h','stops/stops.json')
-
+bsl = BinanceStopLoss(client,'4h','app/stops/stops.json')
+triggerExecution = False
 # export FLASK_APP=app.py
 # flask run
 
@@ -52,10 +52,26 @@ def getStopLoss():
     asset = request.args['asset']
     return bsl.getStopLoss(asset)
 
-@app.route('/getAllStopLoss', methods=['GET'])
-def getAllStopLoss():
-    asset = request.args['asset']
+@app.route('/getAllStopLosses', methods=['GET'])
+def getAllStopLosses():
     return bsl.getStopLosses()
+
+@app.route('/triggerExecution', methods=['POST'])
+def triggerExecution():
+    trig = request.args['triggerExecution']
+    if trig.lower() == 'true':
+        triggerExecution = True
+    else:
+        triggerExecution = False
+    return {'triggerExecution': triggerExecution}
+
+@app.route('/runStopLoss', methods=['POST'])
+def runStopLossEndpoint():
+    run = request.args['runStopLoss']
+    if run.lower() == 'true':
+        return runStopLoss()
+    return {'Run':False}
+
 
 def runStopLoss():
     stopLosses = bsl.getStopLosses()
@@ -74,9 +90,10 @@ def runStopLoss():
                     minNotional = float(bsl.getMinNotional(symbol))
                     if quoteQuantity > minNotional:
                         logging.info("Executing sell order: Quantity - {}  Price - {}  Symbol - {}".format(quoteQuantity, askPrice, symbol ))
-                        # res = bsl.executeMarketOrder(symbol, quoteQuantity)
+                        if triggerExecution:
+                            res = bsl.executeMarketOrder(symbol, quoteQuantity)
+                            logging.info(str(res))
                         logging.info("Order executed for {}".format(symbol))
-                        # logging.info(str(res))
                         bsl.turnOffStopLoss(key)
                     else:
                         logging.warn("Quote quantity is less that minimum notional. Please turn off stop loss")
@@ -94,10 +111,15 @@ try:
     sched.add_job(
         runStopLoss, 
         trigger='cron',
-        minute='05'
+        minute='01'
     )
     sched.start()
     atexit.register(lambda: sched.shutdown(wait=False))
 except Exception as ex:
     logging.ERROR("StopLoss has stopped working")
     logging.ERROR(ex)
+
+if __name__ == "__main__":
+    ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
+    ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
+    app.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)

@@ -6,12 +6,9 @@ import pandas as pd
 import logging
 from utils import Utils
 import unittest
-import configparser
-config = configparser.ConfigParser()
-config.read('./env.ini')
 binance_keys = {
-    'api_key': config.get('BINANCE','api_key'),
-    'secret_key': config.get('BINANCE','secret_key')
+    'api_key': os.environ['API_KEY'],
+    'secret_key': os.environ['SECRET_KEY']
 }
 class BinanceStopLossTest(unittest.TestCase):
   
@@ -26,6 +23,7 @@ class BinanceStopLossTest(unittest.TestCase):
 
   def test_Balance(self):
     balance = self.stopLoss.getAssetBalance(self.asset, self.quote)
+    print(balance)
     try:
       float(balance['free'])
       float(balance['free'+self.quote])
@@ -43,8 +41,9 @@ class BinanceStopLossTest(unittest.TestCase):
     print(prices)
 
   def test_GetLatestCandlestick(self):
+    # TODO: Rewrite test to take care of time delay for time windows. E.g. 4h intervals are form 12 - 4 - 8 - 12.... 
     latestCandle = self.stopLoss.getLatestCandlestick(self.asset+self.quote)
-    lastHourStr = str(datetime.now().replace(microsecond=0, second=0, minute=0) - timedelta(hours=1))
+    lastHourStr = str(datetime.now().replace(microsecond=0, second=0, minute=0) - timedelta(hours=4))
     self.assertEqual(lastHourStr,latestCandle['opentime'])
     
 
@@ -76,4 +75,7 @@ class BinanceStopLossTest(unittest.TestCase):
     self.assertEqual({},slCompare)
 
 if __name__=="__main__":
-  unittest.main()
+  # unittest.main()
+  t = BinanceStopLossTest()
+  t.setUp()
+  t.test_Balance()
