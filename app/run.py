@@ -11,11 +11,20 @@ from flask_pymongo import PyMongo
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 from binance.client import Client
+from decouple import config
+binance_keys = {}
 
-binance_keys = {
+if 'API_KEY' in os.environ:
+    binance_keys = {
     'api_key': os.environ['API_KEY'],
     'secret_key': os.environ['SECRET_KEY']
-}
+    }
+else:
+    binance_keys = {
+    'api_key': config('API_KEY'),
+    'secret_key': config('SECRET_KEY')
+    }
+
 import logging
 from utils import Utils
 utils = Utils()
@@ -24,7 +33,7 @@ application = Flask(__name__)
 application.config["MONGO_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
 
 client = Client(binance_keys['api_key'], binance_keys['secret_key'])
-bsl = BinanceStopLoss(client,'4h','/var/www/stops/stops.json')
+bsl = BinanceStopLoss(client,'4h','./stops/stops.json')
 triggerExecution = False
 # export FLASK_APP=app.py
 # flask run
