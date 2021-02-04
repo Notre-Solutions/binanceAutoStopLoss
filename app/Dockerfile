@@ -13,7 +13,8 @@ RUN pip install gunicorn
 
 RUN addgroup --gid $GROUP_ID www
 RUN adduser --disabled-password -u $USER_ID --ingroup www www --shell /bin/sh
-
+USER root
+RUN chown www:www -R /var/www/
 USER www
 
 EXPOSE 5000

@@ -20,43 +20,43 @@ import logging
 from utils import Utils
 utils = Utils()
 
-app = Flask(__name__)
-app.config["MONGO_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
+application = Flask(__name__)
+application.config["MONGO_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
 
 client = Client(binance_keys['api_key'], binance_keys['secret_key'])
-bsl = BinanceStopLoss(client,'4h','app/stops/stops.json')
+bsl = BinanceStopLoss(client,'4h','/var/www/stops/stops.json')
 triggerExecution = False
 # export FLASK_APP=app.py
 # flask run
 
 
-@app.route('/')
+@application.route('/')
 def hello_world():
     sl = bsl.getStoplosses()
     return str(sl)
 
-@app.route('/createStopLoss', methods=['POST'])
+@application.route('/createStopLoss', methods=['POST'])
 def createStopLoss():
     asset = request.args['asset']
     quote = request.args['quote']
     price = request.args['price']
     return bsl.createStopLoss(asset, quote, price)
 
-@app.route('/removeStopLoss', methods=['DELETE'])
+@application.route('/removeStopLoss', methods=['DELETE'])
 def removeStopLoss():
     asset = request.args['asset']
     return bsl.removeStopLoss(asset)
 
-@app.route('/getStopLoss', methods=['GET'])
+@application.route('/getStopLoss', methods=['GET'])
 def getStopLoss():
     asset = request.args['asset']
     return bsl.getStopLoss(asset)
 
-@app.route('/getAllStopLosses', methods=['GET'])
+@application.route('/getAllStopLosses', methods=['GET'])
 def getAllStopLosses():
     return bsl.getStopLosses()
 
-@app.route('/triggerExecution', methods=['POST'])
+@application.route('/triggerExecution', methods=['POST'])
 def triggerExecution():
     trig = request.args['triggerExecution']
     if trig.lower() == 'true':
@@ -65,7 +65,7 @@ def triggerExecution():
         triggerExecution = False
     return {'triggerExecution': triggerExecution}
 
-@app.route('/runStopLoss', methods=['POST'])
+@application.route('/runStopLoss', methods=['POST'])
 def runStopLossEndpoint():
     run = request.args['runStopLoss']
     if run.lower() == 'true':
@@ -122,4 +122,4 @@ except Exception as ex:
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
     ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
-    app.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)
+    application.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)

@@ -7,10 +7,8 @@ class Utils:
 
   def __init__(self):
     lastHourDateTime = datetime.datetime.now() - datetime.timedelta(hours = 1)
-    Path("/my/directory").mkdir(parents=True, exist_ok=True)
-    file = open(lastHourDateTime.strftime('%Y-%m-%d')+'.log', 'w+')
     print(lastHourDateTime.strftime('%Y-%m-%d')+'.log')
-    logging.basicConfig(filename='./logs/'+lastHourDateTime.strftime('%Y-%m-%d')+'.log', 
+    logging.basicConfig(filename='/var/www/logs/'+lastHourDateTime.strftime('%Y-%m-%d')+'.log', 
     level=logging.INFO, format='%(asctime)s %(message)s',
     datefmt='%m-%d-%Y %I:%M:%S:')
 
