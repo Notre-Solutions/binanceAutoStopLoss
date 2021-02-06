@@ -10,7 +10,7 @@ class Utils:
     print(lastHourDateTime.strftime('%Y-%m-%d')+'.log')
     logging.basicConfig(filename='./logs/'+lastHourDateTime.strftime('%Y-%m-%d')+'.log', 
     level=logging.INFO, format='%(asctime)s %(message)s',
-    datefmt='%m-%d-%Y %I:%M:%S:')
+    datefmt='%m-%d-%Y %H:%M:%S:')
 
 
   def round_decimals_down(self, number:float, decimals:int=2):

@@ -11,26 +11,32 @@ from flask_pymongo import PyMongo
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
 from binance.client import Client
-from decouple import config
+import configparser
+
+import logging
+from utils import Utils
+utils = Utils()
 binance_keys = {}
+application = Flask(__name__)
+
 
 if 'API_KEY' in os.environ:
     binance_keys = {
     'api_key': os.environ['API_KEY'],
     'secret_key': os.environ['SECRET_KEY']
     }
+    application.config["MONGO_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
+
 else:
+    config = configparser.ConfigParser()
+    config.read('./uat.ini')
+
     binance_keys = {
-    'api_key': config('API_KEY'),
-    'secret_key': config('SECRET_KEY')
+        'api_key': config.get('BINANCE','API_KEY'),
+        'secret_key': config.get('BINANCE','SECRET_KEY')
     }
 
-import logging
-from utils import Utils
-utils = Utils()
 
-application = Flask(__name__)
-application.config["MONGO_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
 
 client = Client(binance_keys['api_key'], binance_keys['secret_key'])
 bsl = BinanceStopLoss(client,'4h','./stops/stops.json')
@@ -129,6 +135,7 @@ except Exception as ex:
     logging.ERROR(ex)
 
 if __name__ == "__main__":
+    
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
     ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
     application.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)

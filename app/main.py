@@ -11,19 +11,7 @@ from binance.enums import *
 # from app import addStopLoss
 import os.path
 import os
-from decouple import config
-binance_keys = {}
 
-if 'API_KEY' in os.environ:
-    binance_keys = {
-    'api_key': os.environ['API_KEY'],
-    'secret_key': os.environ['SECRET_KEY']
-    }
-else:
-    binance_keys = {
-    'api_key': config('API_KEY'),
-    'secret_key': config('SECRET_KEY')
-    }
 
 class BinanceStopLoss:
     def __init__(self, binanceClient, interval, stopsFilePath):
